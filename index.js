@@ -1,13 +1,20 @@
 const axios = require("axios");
 var express = require("express");
+const { NUMBER_OF_POST, CURRENT_PAGE_NUMBER } = require("./Constants/constant");
 require("dotenv").config();
 const { fetchPosts } = require("./functions/fetchPosts");
 const { fetchUsers } = require("./functions/fetchUser");
+const paginator = require("./functions/pagination");
+const { isNumeric } = require("./functions/validationNumeric");
 var app = express();
 
 // routes
 app.get("/topcomments/:numberOfPost?", async (req, res, next) => {
-  let NumberOfPost = 10;
+  let NumberOfPost = NUMBER_OF_POST;
+  /**
+   * @param numberOfPost total post to return
+   * Default value is 10
+   */
   if (req.params.numberOfPost) {
     NumberOfPost = req.params.numberOfPost;
   }
@@ -18,10 +25,7 @@ app.get("/topcomments/:numberOfPost?", async (req, res, next) => {
         allUsers = result;
       })
       .catch((err) => {
-        console.log(
-          "🚀 ~ file: index.js ~ line 16 ~ fetchUsers.then ~ err",
-          err
-        );
+        res.status(500).json({ message: err });
       });
     const response = await axios.get(process.env.COMMENTS_API);
     let returnData = [];
@@ -73,6 +77,56 @@ app.get("/topcomments/:numberOfPost?", async (req, res, next) => {
     });
   } catch (error) {
     res.status(500).json({ message: error });
+  }
+});
+
+app.get("/", (req, res, next) => {
+  console.log(req.query);
+  /**
+   * @param limit - total numbers of item to return can be empty
+   * Default limit is 10
+   * @param pageNumber - current page number can be empty
+   */
+  try {
+    let totalNumberOfDataToReturn = NUMBER_OF_POST;
+    let pageNumber = CURRENT_PAGE_NUMBER;
+    if (req.query.limit && isNumeric(req.query.limit)) {
+      totalNumberOfDataToReturn = Number(req.query.limit);
+    }
+    if (req.query.pageNumber && isNumeric(req.query.pageNumber)) {
+      pageNumber = Number(req.query.pageNumber);
+    }
+
+    axios.get(process.env.COMMENTS_API).then((result) => {
+      if (result.data.length > 0) {
+        let arrayOfObjectKeys = Object.keys(result.data[0]);
+
+        if (req.query.q) {
+          let queryParameter = req.query.q.toLowerCase();
+          let newArray = [];
+          result.data.map((comment, index) => {
+            arrayOfObjectKeys.map((key) => {
+              if (
+                comment[key].toString().toLowerCase().includes(queryParameter)
+              ) {
+                newArray.push(comment);
+              }
+            });
+          });
+
+          let returnData = paginator(
+            newArray,
+            pageNumber,
+            totalNumberOfDataToReturn
+          );
+          res.status(200).json(returnData);
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error,
+    });
   }
 });
 
