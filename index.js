@@ -12,7 +12,7 @@ var app = express();
 app.get("/topcomments/:numberOfPost?", async (req, res, next) => {
   let NumberOfPost = NUMBER_OF_POST;
   /**
-   * @param numberOfPost total post to return
+   * @param {number} numberOfPost total post to return
    * Default value is 10
    */
   if (req.params.numberOfPost) {
@@ -59,14 +59,17 @@ app.get("/topcomments/:numberOfPost?", async (req, res, next) => {
       returnData = await fetchPosts(returnData);
     }
     if (allUsers.length > 0) {
-      returnData = returnData.map((w) => {
-        let currentUserExists = allUsers.find((x) => x.id == w.userId);
+      returnData = returnData.map((post) => {
+        let currentUserExists = allUsers.find(
+          (user) => user.id == post.post_user_id
+        );
+
         if (currentUserExists) {
           return {
-            ...w,
-            user_name: currentUserExists.name,
-            user_email: currentUserExists.email,
-            user_username: currentUserExists.username,
+            ...post,
+            post_user_name: currentUserExists.name,
+            post_user_email: currentUserExists.email,
+            post_user_username: currentUserExists.username,
           };
         }
       });
@@ -81,11 +84,11 @@ app.get("/topcomments/:numberOfPost?", async (req, res, next) => {
 });
 
 app.get("/", (req, res, next) => {
-  console.log(req.query);
   /**
-   * @param limit - total numbers of item to return can be empty
+   * @param {number} limit - total numbers of item to return can be empty
    * Default limit is 10
-   * @param pageNumber - current page number can be empty
+   * @param {number} pageNumber - current page number can be empty
+   * @param {boolean} pagination - able pagination can be empty
    */
   try {
     let totalNumberOfDataToReturn = NUMBER_OF_POST;
@@ -113,13 +116,19 @@ app.get("/", (req, res, next) => {
               }
             });
           });
-
-          let returnData = paginator(
-            newArray,
-            pageNumber,
-            totalNumberOfDataToReturn
-          );
+          let returnData = newArray.slice(0, totalNumberOfDataToReturn);
+          if (req.query.pagination) {
+            returnData = paginator(
+              newArray,
+              pageNumber,
+              totalNumberOfDataToReturn
+            );
+          }
           res.status(200).json(returnData);
+        } else {
+          res.status(500).json({
+            message: "Please porvide query text",
+          });
         }
       }
     });

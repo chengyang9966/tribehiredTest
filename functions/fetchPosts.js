@@ -17,7 +17,7 @@ const fetchPosts = (array) => {
             ...w,
             post_title: currentItem.title,
             post_body: currentItem.body,
-            userId: currentItem.userId,
+            post_user_id: currentItem.userId,
           };
         } else {
           return w;
