@@ -1,6 +1,10 @@
 const axios = require("axios");
 var express = require("express");
-const { NUMBER_OF_POST, CURRENT_PAGE_NUMBER } = require("./Constants/constant");
+const {
+  NUMBER_OF_POST,
+  CURRENT_PAGE_NUMBER,
+  OFF_SET,
+} = require("./Constants/constant");
 require("dotenv").config();
 const { fetchPosts } = require("./functions/fetchPosts");
 const { fetchUsers } = require("./functions/fetchUser");
@@ -9,14 +13,20 @@ const { isNumeric } = require("./functions/validationNumeric");
 var app = express();
 
 // routes
-app.get("/topcomments/:numberOfPost?", async (req, res, next) => {
+app.get("/topcomments", async (req, res, next) => {
   let NumberOfPost = NUMBER_OF_POST;
+  let offSet = OFF_SET;
   /**
-   * @param {number} numberOfPost total post to return
+   * @param {number} limit total post to return
    * Default value is 10
+   * @param {number} offset skip the first 50 records
+   * Default value is 0
    */
-  if (req.params.numberOfPost) {
-    NumberOfPost = req.params.numberOfPost;
+  if (req.query.limit && isNumeric(req.query.limit)) {
+    NumberOfPost = Number(req.query.limit);
+  }
+  if (req.query.offset && isNumeric(req.query.offset)) {
+    offSet = Number(req.query.offset);
   }
   try {
     let allUsers = [];
@@ -51,8 +61,9 @@ app.get("/topcomments/:numberOfPost?", async (req, res, next) => {
         }
       });
     }
+
     returnData = returnData
-      .slice(0, NumberOfPost)
+      .slice(offSet, NumberOfPost + offSet)
       .sort((a, b) => a.total_number_of_comments - b.total_number_of_comments);
 
     if (returnData.length > 0) {
@@ -83,7 +94,7 @@ app.get("/topcomments/:numberOfPost?", async (req, res, next) => {
   }
 });
 
-app.get("/", (req, res, next) => {
+app.get("/comments", (req, res, next) => {
   /**
    * @param {number} limit - total numbers of item to return can be empty
    * Default limit is 10
@@ -95,9 +106,6 @@ app.get("/", (req, res, next) => {
     let pageNumber = CURRENT_PAGE_NUMBER;
     if (req.query.limit && isNumeric(req.query.limit)) {
       totalNumberOfDataToReturn = Number(req.query.limit);
-    }
-    if (req.query.pageNumber && isNumeric(req.query.pageNumber)) {
-      pageNumber = Number(req.query.pageNumber);
     }
 
     axios.get(process.env.COMMENTS_API).then((result) => {
@@ -118,6 +126,9 @@ app.get("/", (req, res, next) => {
           });
           let returnData = newArray.slice(0, totalNumberOfDataToReturn);
           if (req.query.pagination) {
+            if (req.query.pageNumber && isNumeric(req.query.pageNumber)) {
+              pageNumber = Number(req.query.pageNumber);
+            }
             returnData = paginator(
               newArray,
               pageNumber,
